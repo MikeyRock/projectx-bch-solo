@@ -4,110 +4,17 @@
 
 ---
 
-## How to Put This on GitHub (step by step)
+## GitHub Repository
 
-You do not need any coding experience. Follow every step in order.
+This project is connected to **https://github.com/MikeyRock/projectx-bch-solo**.
 
----
+All code changes made in v0 are automatically pushed to the branch shown in the v0 sidebar (left panel, click the GitHub icon). To deploy to `main`:
 
-### Part 1 — Create a GitHub Account (skip if you already have one)
+1. Click the **GitHub icon** in the v0 sidebar
+2. Click **Create a Pull Request**
+3. On GitHub, review the changes and click **Merge pull request**
 
-1. Open your browser and go to **https://github.com**
-2. Click **Sign up** in the top-right corner.
-3. Enter an email address, create a password, and choose a username.
-4. Follow the on-screen verification steps and confirm your email.
-
----
-
-### Part 2 — Create a New Repository
-
-1. After logging in, click the **+** icon in the top-right corner → **New repository**.
-2. Fill in the form:
-   - **Repository name:** `projectx-bch-solo` (or any name you like)
-   - **Description:** `BCH solo mining dashboard for Umbrel`
-   - **Visibility:** Choose **Private** (recommended — keeps your config out of public view)
-   - Leave everything else at its default.
-3. Click **Create repository**.
-4. Leave this browser tab open — you will need the URL on the next page.
-
----
-
-### Part 3 — Install Git on Your Computer
-
-> If you already have Git installed, skip to Part 4.
-
-**Windows:**
-1. Go to **https://git-scm.com/download/win** and download the installer.
-2. Run the installer — click **Next** through every screen. All defaults are fine.
-3. Open **Git Bash** from the Start menu.
-
-**Mac:**
-1. Open **Terminal** (press Cmd+Space, type `terminal`, press Enter).
-2. Type `git --version` and press Enter.
-3. If Git is not installed, a prompt will appear asking you to install **Xcode Command Line Tools**. Click **Install**.
-
-**Linux (Ubuntu / Debian):**
-```bash
-sudo apt update && sudo apt install git -y
-```
-
----
-
-### Part 4 — Download This Project to Your Computer
-
-> These steps use the terminal (Git Bash on Windows, Terminal on Mac/Linux).
-
-1. Download this project as a ZIP from v0 (click the three dots → **Download ZIP**).
-2. Unzip the file. You will get a folder called `v0-project` (or similar).
-3. Inside that folder, find the `projectx-bch-solo` folder. That is your project.
-4. Open your terminal and navigate into that folder:
-
-```bash
-cd /path/to/projectx-bch-solo
-```
-
-Replace `/path/to/projectx-bch-solo` with the actual path on your computer.  
-**Example on Windows (Git Bash):** `cd ~/Downloads/v0-project/projectx-bch-solo`  
-**Example on Mac:** `cd ~/Downloads/v0-project/projectx-bch-solo`
-
----
-
-### Part 5 — Push the Project to GitHub
-
-Copy the commands below one by one and paste them into your terminal.  
-Replace `YOUR_GITHUB_USERNAME` and `YOUR_REPO_NAME` with your actual values.
-
-```bash
-# 1. Tell Git who you are (only needed once per computer)
-git config --global user.email "you@example.com"
-git config --global user.name "Your Name"
-
-# 2. Initialize a Git repository in this folder
-git init
-
-# 3. Add all files
-git add .
-
-# 4. Make your first commit
-git commit -m "Initial commit — Project X BCH Solo"
-
-# 5. Point Git to your GitHub repository
-git remote add origin https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git
-
-# 6. Push to GitHub
-git branch -M main
-git push -u origin main
-```
-
-When you run step 6, GitHub will ask for your **username** and **password**.  
-If you have two-factor authentication enabled (recommended), use a **Personal Access Token** instead of your password:
-
-1. Go to **https://github.com/settings/tokens**
-2. Click **Generate new token (classic)**
-3. Give it a name, set expiry, check the **repo** scope, click **Generate token**
-4. Copy the token and paste it as your password in the terminal prompt.
-
-Refresh your GitHub repository page — you should see all the files.
+Once merged, all files are live on `main` and ready for Umbrel to read.
 
 ---
 
@@ -124,7 +31,7 @@ Refresh your GitHub repository page — you should see all the files.
    ```
 2. Clone your repo:
    ```bash
-   git clone https://github.com/YOUR_GITHUB_USERNAME/projectx-bch-solo.git
+   git clone https://github.com/MikeyRock/projectx-bch-solo.git
    cd projectx-bch-solo
    ```
 3. **Set your payout address before starting.** Edit the settings file:
@@ -171,7 +78,7 @@ docker compose restart ckpool
 
 | Component | Image / Version |
 |-----------|----------------|
-| Bitcoin Cash Node | `bitcoin-cash-node:v28.0.1` |
+| Bitcoin Cash Node | `zquestz/bitcoin-cash-node:28.0.1` |
 | Excessive Block Size | 32 MB (EB32.0) |
 | Network | mainnet |
 | RPC Port | 8332 (internal, not exposed) |
@@ -190,6 +97,7 @@ docker compose restart ckpool
 | Stratum Port | Settings → Mining | Port miners connect to. Default 3333. **Requires restart.** |
 | RPC Username | Settings → Node/RPC | Must match bitcoind. Default `bchrpc`. **Requires restart.** |
 | RPC Password | Settings → Node/RPC | Strong random string. **Requires restart.** |
+| Prune Target (MiB) | Settings → Node/RPC | `0` = full archival, `550+` = pruned mode. Saves disk. **Requires restart.** |
 | Pool Name | Settings → UI | Display name shown in the header. |
 | Worker Hint | Settings → UI | Example worker string shown on dashboard. |
 | Webhooks | Settings → Notifications | HMAC-signed POST on block found. |
