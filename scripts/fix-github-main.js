@@ -1,7 +1,7 @@
 // This script uses the GitHub API to directly update files on the main branch.
 // It requires a GITHUB_TOKEN environment variable with repo write access.
 
-const TOKEN = process.env.GITHUB_TOKEN || "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";
+const TOKEN = "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";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
