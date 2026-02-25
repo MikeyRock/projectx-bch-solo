@@ -2,32 +2,28 @@ manifestVersion: 1
 id: projectx-bch-solo
 category: bitcoin
 name: Project X BCH Solo
-tagline: Solo mine Bitcoin Cash from your Umbrel node
-icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.svg
 version: "1.0.2"
+tagline: Solo mine Bitcoin Cash from your Umbrel node
+icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.png
 description: >-
-  Project X runs a full Bitcoin Cash node alongside a ckpool solo stratum
-  server. Point your ASIC miners at the stratum URL and solo mine BCH directly
-  to your own payout address. No pool fees, full custody. The dark premium
-  dashboard shows live hashrate charts, node sync progress, network difficulty
-  tracking, and supports webhook notifications when a block is found.
-releaseNotes: >-
-  Initial release. Self-contained stack: BCHN v28.0.1, ckpool-solo (Stratum v1),
-  and a dark dashboard with 30-min hashrate charts, node pruning support, and
-  webhook block notifications.
+  Run a full Bitcoin Cash node alongside a ckpool solo Stratum v1 pool.
+  Point your ASIC miners at the stratum URL and solo mine BCH directly
+  to your own payout address. No pool fees, full custody.
+  The dark dashboard shows live hashrate charts, node sync progress,
+  network difficulty tracking, and webhook notifications on block found.
+  Miner connection: stratum+tcp://<your-umbrel-ip>:3333
+  Set your BCH payout address in the dashboard Settings after install.
 developer: MikeyRock
 website: https://github.com/MikeyRock/projectx-bch-solo
-dependencies: []
 repo: https://github.com/MikeyRock/projectx-bch-solo
 support: https://github.com/MikeyRock/projectx-bch-solo/issues
+dependencies: []
+port: 80
 gallery:
   - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/1.png
   - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/2.png
-port: 80
-gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
-torOnly: false
 submitter: MikeyRock
 submission: https://github.com/MikeyRock/projectx-bch-solo
