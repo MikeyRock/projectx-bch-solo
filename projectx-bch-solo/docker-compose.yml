@@ -20,7 +20,7 @@ services:
   # Bitcoin Cash Node
   # ──────────────────────────────────────────────
   bchnd:
-    image: zquestz/bitcoin-cash-node:28.0.1
+    image: bitcoin-cash-node:v28.0.1
     restart: unless-stopped
     command: >
       sh -c "

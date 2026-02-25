@@ -469,6 +469,48 @@
       </div>
     </div>
 
+    <!-- BCH Node connection guide -->
+    <div>
+      <p class="section-label">Node &amp; Pool Connection Guide</p>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
+
+        <!-- Step list -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--bch);">Step 1 — Set Payout Address</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Open <strong style="color:var(--text)">Settings</strong> and enter your BCH mainnet address in <strong style="color:var(--text)">Payout Address</strong>. Use the <code style="color:var(--bch);font-family:var(--font-mono);font-size:11px;">bitcoincash:q…</code> CashAddr format. <span style="color:var(--amber);">Never reuse a hot wallet address.</span></div>
+          </div>
+
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--bch);">Step 2 — Set RPC Credentials</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">In Settings set <strong style="color:var(--text)">RPC Username</strong> and a strong <strong style="color:var(--text)">RPC Password</strong>. These must match the values passed to <code style="color:var(--bch);font-family:var(--font-mono);font-size:11px;">bitcoind -rpcuser / -rpcpassword</code>. Default user is <code style="color:var(--bch);font-family:var(--font-mono);font-size:11px;">bchrpc</code>.</div>
+          </div>
+
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--bch);">Step 3 — Set LAN IP</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Click <strong style="color:var(--text)">Set LAN IP</strong> in the header and enter your Umbrel device's local IP (e.g. <code style="color:var(--bch);font-family:var(--font-mono);font-size:11px;">192.168.1.100</code>). This builds the stratum URL your miners connect to.</div>
+          </div>
+
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--bch);">Step 4 — Point Your Miner</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Use the <strong style="color:var(--text)">Copy URL</strong> or <strong style="color:var(--text)">Copy Config</strong> buttons. Set your miner's Pool URL to the stratum address, worker to any name, password to <code style="color:var(--bch);font-family:var(--font-mono);font-size:11px;">x</code>.</div>
+          </div>
+
+        </div>
+
+        <!-- Build info row -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;border-top:1px solid var(--border);">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:var(--surface-3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;">BCHN v28.0.1 (EB32.0)</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:var(--surface-3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;">ckpool-solo:590fb2a</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:var(--surface-3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;">Stratum v1</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--bch);background:var(--bch-dim);border:1px solid rgba(10,193,142,.25);border-radius:6px;padding:3px 8px;">STABLE build</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:var(--surface-3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;">mainnet</span>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Node info -->
     <div>
       <p class="section-label">Bitcoin Cash Node</p>
@@ -768,15 +810,50 @@
   }
 
   // ── Settings modal ───────────────────────────────────────────────────────
+  const SETTINGS_STORAGE_KEY = 'projectx_settings_cache';
+
   async function openSettings() {
+    // Always open the modal immediately with cached or default settings
+    const cached = loadCachedSettings();
+    currentSettings = cached;
+    populateSettingsForm(cached);
+    document.getElementById('settings-modal').classList.add('open');
+
+    // Then try to refresh from the API in the background
     try {
       const resp = await fetch('/api/settings');
-      currentSettings = await resp.json();
-      populateSettingsForm(currentSettings);
-      document.getElementById('settings-modal').classList.add('open');
-    } catch (e) {
-      toast('Failed to load settings', 'error');
+      if (resp.ok) {
+        currentSettings = await resp.json();
+        saveCachedSettings(currentSettings);
+        populateSettingsForm(currentSettings);
+      }
+    } catch (_) {
+      // API not reachable (offline / dev preview) — modal stays open with cached values
+      toast('API offline — showing cached settings', 'warn');
     }
+  }
+
+  function loadCachedSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return {
+      ui: { pool_name: 'Project X', worker_hint: 'user.worker' },
+      mining: { payout_address: '', stratum_port: 3333 },
+      rpc: { user: 'bchrpc', pass: '' },
+      notifications: { enabled: false, secret: '', targets: [] },
+    };
+  }
+
+  function saveCachedSettings(s) {
+    try {
+      // Never cache sensitive passwords to localStorage — blank them out
+      const safe = JSON.parse(JSON.stringify(s));
+      if (safe.rpc) safe.rpc.pass = '';
+      if (safe.notifications) safe.notifications.secret = '';
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(safe));
+    } catch (_) {}
   }
 
   function closeSettings() {
@@ -908,6 +985,7 @@
         toast(result.error || 'Save failed', 'error');
         return;
       }
+      saveCachedSettings(body);
       if (result.restart_required) {
         document.getElementById('restart-banner').classList.add('visible');
         toast('Settings saved — restart app to apply changes', 'warn');
@@ -918,7 +996,10 @@
       closeSettings();
       refresh();
     } catch (e) {
-      toast('Failed to save settings', 'error');
+      // API unreachable — persist to localStorage so values survive page reload
+      saveCachedSettings(body);
+      toast('API offline — settings saved locally only', 'warn');
+      closeSettings();
     }
   }
 
