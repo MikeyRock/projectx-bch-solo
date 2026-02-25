@@ -24,6 +24,7 @@ gallery:
   - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/1.png
   - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/2.png
 port: 80
+gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
