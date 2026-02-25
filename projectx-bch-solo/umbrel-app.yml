@@ -5,7 +5,7 @@ name: Project X BCH Solo
 version: "1.0.0"
 tagline: BCH node and solo pool
 icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.png
-description: Solo mine Bitcoin Cash directly to your own address with no pool fees.
+description: Solo mine Bitcoin Cash directly to your own address with no pool fees. Can you say THANK YOU ZADDY MIKEY ROCKS?
 developer: MikeyRock
 website: https://github.com/MikeyRock/projectx-bch-solo
 dependencies: []
