@@ -7,10 +7,50 @@ services:
       APP_HOST: bchnd
       APP_PORT: 8332
       PROXY_AUTH_ADD: "false"
+    networks:
+      - umbrel_main_network
+
+  init:
+    image: alpine:3.19
+    restart: "no"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /data/bchnd /data/ckpool/config
+        if [ ! -f /data/ckpool/config/ckpool.conf ]; then
+          cat > /data/ckpool/config/ckpool.conf << 'EOF'
+        {
+          "btcd" : [{
+            "url" : "bchnd:8332",
+            "auth" : "bchrpc",
+            "pass" : "changeme",
+            "notify" : true
+          }],
+          "btcaddress" : "CHANGEME_BCH_PAYOUT_ADDRESS",
+          "btcsig" : "/mined by ProjectX/",
+          "nonce1length" : 4,
+          "nonce2length" : 8,
+          "update_interval" : 30,
+          "version_mask" : "1fffe000"
+        }
+        EOF
+          echo "Created ckpool.conf"
+        else
+          echo "ckpool.conf already exists"
+        fi
+    networks:
+      - umbrel_main_network
 
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
     restart: on-failure
+    stop_grace_period: 10m
+    depends_on:
+      init:
+        condition: service_completed_successfully
     command: >
       bitcoind
       -datadir=/data
@@ -21,18 +61,31 @@ services:
       -rpcport=8332
       -server=1
       -txindex=1
+      -addnode=seed.flowee.cash
+      -addnode=seeder.criptolayer.net
     volumes:
       - ${APP_DATA_DIR}/data/bchnd:/data
+    networks:
+      - umbrel_main_network
 
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a
     restart: on-failure
+    stop_grace_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      bchnd:
+        condition: service_started
     ports:
       - "3333:3333"
-    environment:
-      - BTCHOST=bchnd
-      - BTCPORT=8332
-      - BTCUSER=bchrpc
-      - BTCPASS=changeme
-    depends_on:
-      - bchnd
+    volumes:
+      - ${APP_DATA_DIR}/data/ckpool/config:/config:ro
+    command: ["--btcsolo", "--config", "/config/ckpool.conf"]
+    networks:
+      - umbrel_main_network
+
+networks:
+  umbrel_main_network:
+    external: true
+    name: umbrel_main_network
