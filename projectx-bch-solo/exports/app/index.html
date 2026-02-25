@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project X — BCH Solo</title>
+  <meta name="description" content="Bitcoin Cash solo mining dashboard" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0a0a;
+      --surface:     #111111;
+      --surface-2:   #181818;
+      --surface-3:   #1f1f1f;
+      --border:      rgba(255,255,255,.07);
+      --border-hi:   rgba(255,255,255,.14);
+      --bch:         #0ac18e;       /* BCH green */
+      --bch-dim:     rgba(10,193,142,.15);
+      --bch-glow:    rgba(10,193,142,.35);
+      --amber:       #f59e0b;
+      --red:         #ef4444;
+      --text:        #f0f0f0;
+      --text-muted:  #6b7280;
+      --text-dim:    #9ca3af;
+      --radius:      12px;
+      --radius-sm:   8px;
+      --font-sans:   'Inter', system-ui, sans-serif;
+      --font-mono:   'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: var(--font-sans); cursor: pointer; border: none; }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--bch), #08a07a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: #000; font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+    .brand-name { font-weight: 600; font-size: 15px; color: var(--text); }
+    .brand-sub  { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* ── Restart required banner ─────────────────────────────────────────── */
+    #restart-banner {
+      display: none;
+      background: rgba(245,158,11,.12);
+      border-bottom: 1px solid rgba(245,158,11,.3);
+      padding: 10px 24px;
+      font-size: 13px;
+      color: var(--amber);
+      gap: 8px;
+      align-items: center;
+    }
+    #restart-banner.visible { display: flex; }
+    #restart-banner svg { flex-shrink: 0; }
+
+    /* ── Main grid ───────────────────────────────────────────────────────── */
+    main { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 1280px; margin: 0 auto; width: 100%; }
+
+    /* ── Status row ─────────────────────────────────────────────────────── */
+    .status-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .status-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 12px; color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+    .dot.green  { background: var(--bch); box-shadow: 0 0 6px var(--bch); }
+    .dot.amber  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .dot.red    { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .dot.pulse  { animation: pulse 1.8s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .35; }
+    }
+
+    /* ── Section label ───────────────────────────────────────────────────── */
+    .section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Stratum card ────────────────────────────────────────────────────── */
+    .stratum-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .stratum-info { display: flex; flex-direction: column; gap: 4px; }
+    .stratum-url {
+      font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+      color: var(--bch);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .stratum-hint { font-size: 12px; color: var(--text-muted); }
+
+    .stratum-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Tile grid ───────────────────────────────────────────────────────── */
+    .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: border-color .2s, transform .2s;
+      position: relative; overflow: hidden;
+    }
+    .tile:hover { border-color: var(--border-hi); transform: translateY(-1px); }
+    .tile::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--bch); opacity: 0;
+      transition: opacity .2s;
+    }
+    .tile:hover::before { opacity: 1; }
+
+    .tile-label { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+    .tile-value { font-family: var(--font-mono); font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
+    .tile-value.accent { color: var(--bch); }
+    .tile-sub { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Node info card ──────────────────────────────────────────────────── */
+    .node-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .node-field { display: flex; flex-direction: column; gap: 3px; }
+    .node-field-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+    .node-field-value { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+
+    /* Sync progress bar */
+    .sync-bar-wrap { width: 100%; background: var(--surface-3); border-radius: 99px; height: 4px; margin-top: 4px; overflow: hidden; }
+    .sync-bar-fill { height: 100%; background: var(--bch); border-radius: 99px; transition: width .5s ease; }
+
+    /* ── Payout card ─────────────────────────────────────────────────────── */
+    .payout-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .payout-addr {
+      font-family: var(--font-mono); font-size: 13px; color: var(--text-dim);
+      word-break: break-all;
+    }
+    .payout-addr span { color: var(--bch); }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 500;
+      transition: all .15s;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-hi); }
+
+    .btn-primary {
+      background: var(--bch);
+      color: #000;
+      border: 1px solid transparent;
+    }
+    .btn-primary:hover { background: #0bd4a0; }
+
+    .btn-danger {
+      background: rgba(239,68,68,.12);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,.25);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,.22); }
+
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── Settings modal ──────────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.75); backdrop-filter: blur(4px);
+      justify-content: center; align-items: flex-start; overflow-y: auto;
+      padding: 40px 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: 16px;
+      width: 100%; max-width: 680px;
+      display: flex; flex-direction: column;
+      box-shadow: 0 32px 64px rgba(0,0,0,.6);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 6px; }
+    .modal-close:hover { background: var(--surface-3); color: var(--text); }
+
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 28px; overflow-y: auto; }
+
+    .settings-group { display: flex; flex-direction: column; gap: 14px; }
+    .settings-group-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--bch); border-bottom: 1px solid var(--bch-dim); padding-bottom: 6px;
+    }
+
+    .form-row { display: flex; flex-direction: column; gap: 4px; }
+    .form-label { font-size: 12px; font-weight: 500; color: var(--text-dim); }
+    .form-hint  { font-size: 11px; color: var(--text-muted); }
+
+    .form-input {
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 9px 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--bch); box-shadow: 0 0 0 2px var(--bch-dim); }
+    .form-input::placeholder { color: var(--text-muted); }
+
+    .form-toggle {
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+    }
+    .toggle-track {
+      width: 36px; height: 20px; border-radius: 99px;
+      background: var(--surface-3); border: 1px solid var(--border);
+      position: relative; transition: background .2s;
+      flex-shrink: 0;
+    }
+    .toggle-track.on { background: var(--bch); border-color: var(--bch); }
+    .toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--text-muted);
+      transition: left .2s, background .2s;
+    }
+    .toggle-track.on .toggle-thumb { left: 18px; background: #000; }
+
+    /* Webhook targets */
+    .webhook-targets { display: flex; flex-direction: column; gap: 8px; }
+    .webhook-target-row { display: flex; gap: 8px; }
+    .webhook-target-row .form-input.name { width: 140px; flex-shrink: 0; }
+    .webhook-target-row .form-input.url { flex: 1; }
+
+    .modal-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      gap: 10px; flex-wrap: wrap;
+    }
+    .footer-left { display: flex; align-items: center; gap: 8px; }
+
+    /* Restart warning in modal */
+    .restart-notice {
+      display: none; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--amber); padding: 8px 12px;
+      background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25);
+      border-radius: var(--radius-sm);
+    }
+    .restart-notice.visible { display: flex; }
+
+    /* ── LAN IP modal ────────────────────────────────────────────────────── */
+    .lan-modal {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: 16px;
+      width: 100%; max-width: 400px;
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      box-shadow: 0 32px 64px rgba(0,0,0,.6);
+    }
+    .lan-modal-title { font-size: 15px; font-weight: 600; }
+
+    /* ── Toaster ─────────────────────────────────────────────────────────── */
+    #toaster {
+      position: fixed; bottom: 24px; right: 24px; z-index: 300;
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+    }
+    .toast {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      animation: slideIn .2s ease;
+      max-width: 320px;
+    }
+    .toast.success { border-left: 3px solid var(--bch); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast.warn    { border-left: 3px solid var(--amber); }
+    @keyframes slideIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+    /* ── Loading skeleton ────────────────────────────────────────────────── */
+    .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 0 16px; }
+      main { padding: 16px; gap: 16px; }
+      .tiles { grid-template-columns: 1fr 1fr; }
+      .node-card { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Restart banner -->
+  <div id="restart-banner" role="alert">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    App restart required — payout address, stratum port, or RPC credentials were changed.
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-brand">
+      <div class="brand-icon">X</div>
+      <div>
+        <div class="brand-name" id="pool-name-header">Project X</div>
+        <div class="brand-sub">BCH SOLO</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="refresh()">
+        <svg id="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="openLanModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Set LAN IP
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openSettings()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Status chips -->
+    <div class="status-row" id="status-row">
+      <div class="status-chip">
+        <span class="dot" id="dot-node"></span>
+        <span id="chip-node">Node —</span>
+      </div>
+      <div class="status-chip">
+        <span class="dot" id="dot-stratum"></span>
+        <span id="chip-stratum">Stratum —</span>
+      </div>
+      <div class="status-chip">
+        <span id="chip-version" style="color:var(--text-muted)">—</span>
+      </div>
+      <div class="status-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="chip-uptime">—</span>
+      </div>
+    </div>
+
+    <!-- Stratum URL card -->
+    <div>
+      <p class="section-label">Stratum Connection</p>
+      <div class="stratum-card">
+        <div class="stratum-info">
+          <div class="stratum-url" id="stratum-url-display">stratum+tcp://&lt;LAN IP&gt;:3333</div>
+          <div class="stratum-hint">Worker format: <span id="worker-hint-display" style="color:var(--text-dim);font-family:var(--font-mono);">user.worker</span></div>
+        </div>
+        <div class="stratum-actions">
+          <button class="btn btn-ghost btn-sm" onclick="copyStratumUrl()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy URL
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="copyMinerConfig()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Copy Config
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live metric tiles -->
+    <div>
+      <p class="section-label">Live Mining Stats</p>
+      <div class="tiles">
+        <div class="tile">
+          <div class="tile-label">Workers Online</div>
+          <div class="tile-value accent" id="tile-workers">—</div>
+          <div class="tile-sub">Active in last 10 min</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Shares / Min</div>
+          <div class="tile-value" id="tile-spm">—</div>
+          <div class="tile-sub" id="tile-spm-sub">—</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Best Share Diff</div>
+          <div class="tile-value" id="tile-best">—</div>
+          <div class="tile-sub">In current window</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Accepted</div>
+          <div class="tile-value accent" id="tile-accepted">—</div>
+          <div class="tile-sub" id="tile-rejected-sub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payout address -->
+    <div class="payout-card">
+      <div>
+        <div class="section-label" style="margin-bottom:4px;">Payout Address</div>
+        <div class="payout-addr" id="payout-addr">—</div>
+      </div>
+    </div>
+
+    <!-- Node info -->
+    <div>
+      <p class="section-label">Bitcoin Cash Node</p>
+      <div class="node-card">
+        <div class="node-field">
+          <div class="node-field-label">Chain</div>
+          <div class="node-field-value" id="node-chain">—</div>
+        </div>
+        <div class="node-field">
+          <div class="node-field-label">Blocks</div>
+          <div class="node-field-value" id="node-blocks">—</div>
+        </div>
+        <div class="node-field">
+          <div class="node-field-label">Headers</div>
+          <div class="node-field-value" id="node-headers">—</div>
+        </div>
+        <div class="node-field">
+          <div class="node-field-label">Sync Progress</div>
+          <div class="node-field-value" id="node-sync">—</div>
+          <div class="sync-bar-wrap"><div class="sync-bar-fill" id="sync-bar" style="width:0%"></div></div>
+        </div>
+        <div class="node-field">
+          <div class="node-field-label">IBD</div>
+          <div class="node-field-value" id="node-ibd">—</div>
+        </div>
+        <div class="node-field">
+          <div class="node-field-label">Version</div>
+          <div class="node-field-value" id="node-version">—</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Settings Modal ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="settings-modal" role="dialog" aria-label="Settings" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" onclick="closeSettings()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- UI group -->
+      <div class="settings-group">
+        <div class="settings-group-title">UI</div>
+        <div class="form-row">
+          <label class="form-label" for="s-pool-name">Pool Name</label>
+          <input class="form-input" id="s-pool-name" type="text" placeholder="Project X" />
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="s-worker-hint">Worker Hint</label>
+          <input class="form-input" id="s-worker-hint" type="text" placeholder="user.worker" />
+          <span class="form-hint">Displayed on dashboard as the expected worker name format.</span>
+        </div>
+      </div>
+
+      <!-- Mining group -->
+      <div class="settings-group">
+        <div class="settings-group-title">Mining</div>
+        <div class="form-row">
+          <label class="form-label" for="s-payout">Payout Address</label>
+          <input class="form-input" id="s-payout" type="text" placeholder="bitcoincash:q..." />
+          <span class="form-hint">BCH mainnet address. Requires restart to take effect.</span>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="s-stratum-port">Stratum Port</label>
+          <input class="form-input" id="s-stratum-port" type="number" min="1" max="65535" placeholder="3333" style="width:120px;" />
+          <span class="form-hint">Requires restart to take effect.</span>
+        </div>
+      </div>
+
+      <!-- Node / RPC group -->
+      <div class="settings-group">
+        <div class="settings-group-title">Node / RPC</div>
+        <div class="form-row">
+          <label class="form-label" for="s-rpc-user">RPC Username</label>
+          <input class="form-input" id="s-rpc-user" type="text" placeholder="bchrpc" />
+          <span class="form-hint">Requires restart to take effect.</span>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="s-rpc-pass">RPC Password</label>
+          <input class="form-input" id="s-rpc-pass" type="password" placeholder="••••••••" />
+          <span class="form-hint">Leave as &#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022; to keep existing. Requires restart.</span>
+        </div>
+      </div>
+
+      <!-- Notifications group -->
+      <div class="settings-group">
+        <div class="settings-group-title">Notifications</div>
+        <div class="form-row">
+          <label class="form-toggle" for="s-notif-enabled">
+            <div class="toggle-track" id="toggle-track-notif" onclick="toggleNotif()">
+              <div class="toggle-thumb"></div>
+            </div>
+            <span class="form-label" style="cursor:pointer;margin:0">Enable webhook notifications</span>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="s-notif-secret">Signing Secret</label>
+          <input class="form-input" id="s-notif-secret" type="password" placeholder="••••••••" />
+          <span class="form-hint">HMAC SHA-256 secret. Used to sign <code style="color:var(--bch)">X-ProjectX-Signature</code> header.</span>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Webhook Targets</label>
+          <div class="webhook-targets" id="webhook-targets"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="addWebhookTarget()">+ Add Target</button>
+            <button class="btn btn-ghost btn-sm" onclick="testWebhook()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.84a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.92z"/></svg>
+              Test
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div class="footer-left">
+        <div class="restart-notice" id="restart-notice">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Restart required after saving
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="discardSettings()">Discard</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LAN IP Modal ───────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="lan-modal" role="dialog" aria-label="Set LAN IP" aria-modal="true">
+  <div class="lan-modal">
+    <div class="lan-modal-title">Set Umbrel LAN IP</div>
+    <p style="font-size:13px;color:var(--text-muted)">Enter the local network IP of your Umbrel device. This is used to generate the stratum connection URL shown on the dashboard. Stored in browser only.</p>
+    <div class="form-row">
+      <label class="form-label" for="lan-ip-input">LAN IP Address</label>
+      <input class="form-input" id="lan-ip-input" type="text" placeholder="192.168.1.100" />
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+      <button class="btn btn-ghost" onclick="closeLanModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLanIp()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toaster -->
+<div id="toaster"></div>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+  let currentSettings = null;
+  let notifEnabled = false;
+  let lastStatus = null;
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    updateStratumUrl();
+    refresh();
+    setInterval(refresh, 15000);
+  });
+
+  // ── Data fetching ────────────────────────────────────────────────────────
+  async function refresh() {
+    const icon = document.getElementById('refresh-icon');
+    icon.style.animation = 'spin 0.8s linear infinite';
+    icon.style.transformOrigin = 'center';
+    if (!document.styleSheets[0].cssRules) {
+      const style = document.createElement('style');
+      style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+    try {
+      const resp = await fetch('/api/status');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      lastStatus = data;
+      renderStatus(data);
+    } catch (e) {
+      renderOffline();
+    } finally {
+      icon.style.animation = '';
+    }
+  }
+
+  function renderStatus(data) {
+    // Pool name
+    const poolName = data.ui?.pool_name || 'Project X';
+    document.getElementById('pool-name-header').textContent = poolName;
+
+    // Node status chips
+    const nodeOnline = data.node?.online === true;
+    const dotNode = document.getElementById('dot-node');
+    dotNode.className = 'dot ' + (nodeOnline ? 'green pulse' : 'red');
+    document.getElementById('chip-node').textContent = 'Node ' + (nodeOnline ? 'Online' : 'Offline');
+
+    // Stratum — heuristic: if workers > 0, likely online
+    const workers = data.ckpool?.workers_online ?? 0;
+    const dotStratum = document.getElementById('dot-stratum');
+    dotStratum.className = 'dot ' + (nodeOnline ? 'green' : 'amber');
+    document.getElementById('chip-stratum').textContent = 'Stratum ' + (nodeOnline ? 'Online' : 'Starting');
+
+    // Version
+    const ver = data.node?.subversion || (data.node?.version ? 'v' + data.node.version : '—');
+    document.getElementById('chip-version').textContent = ver;
+
+    // Uptime
+    document.getElementById('chip-uptime').textContent = data.uptime || '—';
+
+    // Stratum URL
+    updateStratumUrl(data.mining?.stratum_port);
+
+    // Worker hint
+    const hint = data.ui?.worker_hint || 'user.worker';
+    document.getElementById('worker-hint-display').textContent = hint;
+
+    // Tiles
+    document.getElementById('tile-workers').textContent = workers.toString();
+    const spm = data.ckpool?.shares_per_min ?? 0;
+    document.getElementById('tile-spm').textContent = spm.toFixed(2);
+    document.getElementById('tile-spm-sub').textContent = `${data.ckpool?.window_minutes ?? 10} min window`;
+
+    const bestDiff = data.ckpool?.best_share_diff ?? 0;
+    document.getElementById('tile-best').textContent = formatDiff(bestDiff);
+
+    const accepted = data.ckpool?.accepted ?? 0;
+    const rejected = data.ckpool?.rejected ?? 0;
+    document.getElementById('tile-accepted').textContent = accepted.toString();
+    document.getElementById('tile-rejected-sub').textContent = `${rejected} rejected`;
+
+    // Payout
+    const addr = data.mining?.payout_address || '—';
+    document.getElementById('payout-addr').textContent = addr;
+
+    // Node card
+    const n = data.node || {};
+    document.getElementById('node-chain').textContent = n.chain || '—';
+    document.getElementById('node-blocks').textContent = n.blocks != null ? n.blocks.toLocaleString() : '—';
+    document.getElementById('node-headers').textContent = n.headers != null ? n.headers.toLocaleString() : '—';
+    const prog = n.verification_progress ?? 0;
+    document.getElementById('node-sync').textContent = prog.toFixed(2) + '%';
+    document.getElementById('sync-bar').style.width = Math.min(100, prog) + '%';
+    document.getElementById('node-ibd').textContent = n.initial_block_download ? 'Yes (syncing)' : 'No';
+    document.getElementById('node-version').textContent = n.subversion || (n.version ? 'v' + n.version : '—');
+  }
+
+  function renderOffline() {
+    document.getElementById('dot-node').className = 'dot red';
+    document.getElementById('chip-node').textContent = 'Node Offline';
+    document.getElementById('dot-stratum').className = 'dot amber';
+    document.getElementById('chip-stratum').textContent = 'Stratum —';
+  }
+
+  // ── Stratum URL ──────────────────────────────────────────────────────────
+  function updateStratumUrl(port) {
+    const lanIp = localStorage.getItem('projectx_lan_ip') || '<LAN IP>';
+    const p = port || (lastStatus?.mining?.stratum_port) || 3333;
+    const url = `stratum+tcp://${lanIp}:${p}`;
+    document.getElementById('stratum-url-display').textContent = url;
+  }
+
+  function copyStratumUrl() {
+    const el = document.getElementById('stratum-url-display');
+    navigator.clipboard.writeText(el.textContent).then(() => toast('Stratum URL copied', 'success'));
+  }
+
+  function copyMinerConfig() {
+    const lanIp = localStorage.getItem('projectx_lan_ip') || '<LAN IP>';
+    const port = lastStatus?.mining?.stratum_port || 3333;
+    const hint = lastStatus?.ui?.worker_hint || 'user.worker';
+    const config = `Pool URL: stratum+tcp://${lanIp}:${port}\nWorker:   ${hint}\nPassword: x`;
+    navigator.clipboard.writeText(config).then(() => toast('Miner config copied', 'success'));
+  }
+
+  // ── LAN IP modal ─────────────────────────────────────────────────────────
+  function openLanModal() {
+    const current = localStorage.getItem('projectx_lan_ip') || '';
+    document.getElementById('lan-ip-input').value = current;
+    document.getElementById('lan-modal').classList.add('open');
+  }
+
+  function closeLanModal() {
+    document.getElementById('lan-modal').classList.remove('open');
+  }
+
+  function saveLanIp() {
+    const val = document.getElementById('lan-ip-input').value.trim();
+    if (val) {
+      localStorage.setItem('projectx_lan_ip', val);
+      updateStratumUrl();
+      toast('LAN IP saved', 'success');
+    }
+    closeLanModal();
+  }
+
+  // ── Settings modal ───────────────────────────────────────────────────────
+  async function openSettings() {
+    try {
+      const resp = await fetch('/api/settings');
+      currentSettings = await resp.json();
+      populateSettingsForm(currentSettings);
+      document.getElementById('settings-modal').classList.add('open');
+    } catch (e) {
+      toast('Failed to load settings', 'error');
+    }
+  }
+
+  function closeSettings() {
+    document.getElementById('settings-modal').classList.remove('open');
+    document.getElementById('restart-notice').classList.remove('visible');
+  }
+
+  function discardSettings() {
+    if (currentSettings) populateSettingsForm(currentSettings);
+    closeSettings();
+    toast('Changes discarded', 'warn');
+  }
+
+  function populateSettingsForm(s) {
+    document.getElementById('s-pool-name').value = s.ui?.pool_name || '';
+    document.getElementById('s-worker-hint').value = s.ui?.worker_hint || '';
+    document.getElementById('s-payout').value = s.mining?.payout_address || '';
+    document.getElementById('s-stratum-port').value = s.mining?.stratum_port || 3333;
+    document.getElementById('s-rpc-user').value = s.rpc?.user || '';
+    document.getElementById('s-rpc-pass').value = s.rpc?.pass || '';
+    notifEnabled = s.notifications?.enabled || false;
+    const track = document.getElementById('toggle-track-notif');
+    track.className = 'toggle-track' + (notifEnabled ? ' on' : '');
+    document.getElementById('s-notif-secret').value = s.notifications?.secret || '';
+
+    // Webhook targets
+    renderWebhookTargets(s.notifications?.targets || []);
+
+    // Live change detection
+    document.getElementById('restart-notice').classList.remove('visible');
+    setupRestartDetection();
+  }
+
+  function renderWebhookTargets(targets) {
+    const container = document.getElementById('webhook-targets');
+    container.innerHTML = '';
+    targets.forEach((t, i) => {
+      const row = document.createElement('div');
+      row.className = 'webhook-target-row';
+      row.innerHTML = `
+        <input class="form-input name" type="text" placeholder="Name" value="${escHtml(t.name || '')}" data-idx="${i}" data-field="name" />
+        <input class="form-input url" type="url" placeholder="https://..." value="${escHtml(t.url || '')}" data-idx="${i}" data-field="url" />
+        <button class="btn btn-ghost btn-sm" onclick="removeWebhookTarget(${i})" aria-label="Remove target">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`;
+      container.appendChild(row);
+    });
+  }
+
+  function addWebhookTarget() {
+    const targets = collectWebhookTargets();
+    targets.push({ name: '', url: '' });
+    renderWebhookTargets(targets);
+  }
+
+  function removeWebhookTarget(idx) {
+    const targets = collectWebhookTargets();
+    targets.splice(idx, 1);
+    renderWebhookTargets(targets);
+  }
+
+  function collectWebhookTargets() {
+    const rows = document.querySelectorAll('#webhook-targets .webhook-target-row');
+    const targets = [];
+    rows.forEach((row) => {
+      const nameEl = row.querySelector('[data-field="name"]');
+      const urlEl  = row.querySelector('[data-field="url"]');
+      if (nameEl && urlEl) targets.push({ name: nameEl.value, url: urlEl.value });
+    });
+    return targets;
+  }
+
+  function toggleNotif() {
+    notifEnabled = !notifEnabled;
+    const track = document.getElementById('toggle-track-notif');
+    track.className = 'toggle-track' + (notifEnabled ? ' on' : '');
+  }
+
+  function setupRestartDetection() {
+    const RESTART_FIELDS = ['s-payout', 's-stratum-port', 's-rpc-user', 's-rpc-pass'];
+    const orig = {
+      payout: document.getElementById('s-payout').value,
+      port:   document.getElementById('s-stratum-port').value,
+      user:   document.getElementById('s-rpc-user').value,
+      pass:   document.getElementById('s-rpc-pass').value,
+    };
+    const notice = document.getElementById('restart-notice');
+    RESTART_FIELDS.forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        const changed =
+          document.getElementById('s-payout').value !== orig.payout ||
+          document.getElementById('s-stratum-port').value !== orig.port ||
+          document.getElementById('s-rpc-user').value !== orig.user ||
+          (document.getElementById('s-rpc-pass').value !== orig.pass && document.getElementById('s-rpc-pass').value !== '••••••••');
+        notice.className = 'restart-notice' + (changed ? ' visible' : '');
+      });
+    });
+  }
+
+  async function saveSettings() {
+    const body = {
+      ui: {
+        pool_name: document.getElementById('s-pool-name').value.trim(),
+        worker_hint: document.getElementById('s-worker-hint').value.trim(),
+      },
+      mining: {
+        payout_address: document.getElementById('s-payout').value.trim(),
+        stratum_port: parseInt(document.getElementById('s-stratum-port').value, 10),
+      },
+      rpc: {
+        user: document.getElementById('s-rpc-user').value.trim(),
+        pass: document.getElementById('s-rpc-pass').value,
+      },
+      notifications: {
+        enabled: notifEnabled,
+        secret: document.getElementById('s-notif-secret').value,
+        targets: collectWebhookTargets(),
+      },
+    };
+
+    try {
+      const resp = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await resp.json();
+      if (!result.ok) {
+        toast(result.error || 'Save failed', 'error');
+        return;
+      }
+      if (result.restart_required) {
+        document.getElementById('restart-banner').classList.add('visible');
+        toast('Settings saved — restart app to apply changes', 'warn');
+      } else {
+        document.getElementById('restart-banner').classList.remove('visible');
+        toast('Settings saved', 'success');
+      }
+      closeSettings();
+      refresh();
+    } catch (e) {
+      toast('Failed to save settings', 'error');
+    }
+  }
+
+  async function testWebhook() {
+    try {
+      toast('Sending test webhook…', 'warn');
+      const resp = await fetch('/api/webhooks/test', { method: 'POST' });
+      const result = await resp.json();
+      if (result.ok) {
+        const failed = (result.results || []).filter(r => !r.ok);
+        if (failed.length === 0) {
+          toast('Test webhook delivered successfully', 'success');
+        } else {
+          toast(`Test sent — ${failed.length} target(s) failed`, 'warn');
+        }
+      } else {
+        toast('Webhook test failed', 'error');
+      }
+    } catch (e) {
+      toast('Webhook test error: ' + e.message, 'error');
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function formatDiff(n) {
+    if (!n || n === 0) return '0';
+    if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+    if (n >= 1e9)  return (n / 1e9).toFixed(2) + 'G';
+    if (n >= 1e6)  return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3)  return (n / 1e3).toFixed(2) + 'K';
+    return n.toFixed(2);
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    document.getElementById('toaster').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // Close modals on overlay click
+  document.getElementById('settings-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('settings-modal')) closeSettings();
+  });
+  document.getElementById('lan-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('lan-modal')) closeLanModal();
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeSettings(); closeLanModal(); }
+  });
+</script>
+</body>
+</html>
