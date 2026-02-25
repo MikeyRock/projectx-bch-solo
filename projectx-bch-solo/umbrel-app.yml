@@ -1,29 +1,32 @@
 manifestVersion: 1
 id: projectx-bch-solo
 category: bitcoin
-name: "Project X — BCH Solo"
-version: "1.0.2"
+name: Project X BCH Solo
 tagline: Solo mine Bitcoin Cash from your Umbrel node
+icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.svg
+version: "1.0.2"
 description: >-
   Project X runs a full Bitcoin Cash node alongside a ckpool solo stratum
   server. Point your ASIC miners at the stratum URL and solo mine BCH directly
-  to your own payout address — no pool fees, full custody. The dark premium
-  dashboard shows live worker stats, node sync progress, share rates, and
-  supports webhook notifications when a block is found.
+  to your own payout address. No pool fees, full custody. The dark premium
+  dashboard shows live hashrate charts, node sync progress, network difficulty
+  tracking, and supports webhook notifications when a block is found.
 releaseNotes: >-
-  Initial release. Self-contained stack with BCHN v28.0.1, ckpool-solo, and
-  a dark premium dashboard with hashrate charts, network difficulty tracking,
-  node pruning support, and webhook notifications.
+  Initial release. Self-contained stack: BCHN v28.0.1, ckpool-solo (Stratum v1),
+  and a dark dashboard with 30-min hashrate charts, node pruning support, and
+  webhook block notifications.
 developer: MikeyRock
 website: https://github.com/MikeyRock/projectx-bch-solo
 dependencies: []
 repo: https://github.com/MikeyRock/projectx-bch-solo
 support: https://github.com/MikeyRock/projectx-bch-solo/issues
+gallery:
+  - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/1.png
+  - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/2.png
 port: 80
 path: ""
 defaultUsername: ""
 defaultPassword: ""
-deterministicPassword: false
 torOnly: false
 submitter: MikeyRock
 submission: https://github.com/MikeyRock/projectx-bch-solo

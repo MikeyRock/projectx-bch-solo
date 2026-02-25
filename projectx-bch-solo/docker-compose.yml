@@ -1,105 +1,62 @@
-version: "3.7" # umbrel-compatible
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Project X — BCH Solo  |  Self-contained stack
-# Starts its own Bitcoin Cash Node (BCHN v28.0.1) alongside ckpool and the
-# dashboard API. No external Umbrel BCH node is required.
-#
-# Before first run, open the dashboard Settings and set:
-#   1. Your BCH payout address  (bitcoincash:q…)
-#   2. A strong RPC password    (used internally between bchnd and ckpool)
-# ──────────────────────────────────────────────────────────────────────────────
+version: "3.7"
 
 services:
 
-  # ──────────────────────────────────────────────
-  # Umbrel app_proxy — required by umbrelOS to
-  # route traffic to this app on the home screen.
-  # ──────────────────────────────────────────────
   app_proxy:
     environment:
       APP_HOST: projectx-bch-solo_web_1
       APP_PORT: 80
       PROXY_AUTH_ADD: "false"
 
-  # ──────────────────────────────────────────────
-  # nginx — static UI + API reverse proxy
-  # ──────────────────────────────────────────────
   web:
     image: nginx:1.27-alpine
-    restart: unless-stopped
+    restart: on-failure
     volumes:
-      - ./exports/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./exports/app:/usr/share/nginx/html:ro
+      - ${APP_DATA_DIR}/exports/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${APP_DATA_DIR}/exports/app:/usr/share/nginx/html:ro
     depends_on:
       - api
 
-  # ──────────────────────────────────────────────
-  # Bitcoin Cash Node  v28.0.1  (EB32.0)
-  # mainnet — full node, txindex enabled
-  # RPC bound to all interfaces so ckpool and the
-  # API container can reach it by hostname "bchnd"
-  # ──────────────────────────────────────────────
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
-    restart: unless-stopped
+    restart: on-failure
     command: >
-      sh -c "
-        SETTINGS=/data/projectx-settings.json
-        RPC_USER=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['user'])\" 2>/dev/null || echo bchrpc)
-        RPC_PASS=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['pass'])\" 2>/dev/null || echo changeme)
-        PRUNE=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d.get('node',{}).get('prune',0))\" 2>/dev/null || echo 0)
-        if [ \"$$PRUNE\" -gt 0 ]; then
-          PRUNE_FLAG=\"-prune=$$PRUNE\"
-          TXINDEX_FLAG=\"-txindex=0\"
-        else
-          PRUNE_FLAG=\"\"
-          TXINDEX_FLAG=\"-txindex=1\"
-        fi
-        exec bitcoind \
-          -datadir=/bchnd_data \
-          -rpcuser=$$RPC_USER \
-          -rpcpassword=$$RPC_PASS \
-          -rpcallowip=0.0.0.0/0 \
-          -rpcbind=0.0.0.0 \
-          -rpcport=8332 \
-          -server=1 \
-          $$TXINDEX_FLAG \
-          $$PRUNE_FLAG \
-          -addnode=seed.flowee.cash \
-          -addnode=seeder.criptolayer.net
-      "
+      bitcoind
+      -datadir=/data
+      -rpcuser=bchrpc
+      -rpcpassword=changeme_rpc
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcport=8332
+      -server=1
+      -txindex=1
+      -addnode=seed.flowee.cash
+      -addnode=seeder.criptolayer.net
     volumes:
-      - bchnd_data:/bchnd_data
-      - ckpool_data:/data:ro   # read settings to get RPC creds
+      - ${APP_DATA_DIR}/data/bchnd:/data
 
-  # ──────────────────────────────────────────────
-  # ckpool-solo  (Stratum v1)
-  # pinned to stable build: 590fb2a
-  # ──────────────────────────────────────────────
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a
-    restart: unless-stopped
+    restart: on-failure
     ports:
       - "3333:3333"
     volumes:
-      - ckpool_data:/data
-      - ./scripts/init.sh:/scripts/init.sh:ro
+      - ${APP_DATA_DIR}/data/ckpool:/data
+      - ${APP_DATA_DIR}/scripts/init.sh:/scripts/init.sh:ro
     entrypoint: ["/bin/sh", "/scripts/init.sh"]
     depends_on:
       - bchnd
 
-  # ──────────────────────────────────────────────
-  # Python Flask API
-  # reads ckpool log + proxies BCH node RPC
-  # ──────────────────────────────────────────────
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    restart: unless-stopped
+    image: python:3.12-slim
+    restart: on-failure
     volumes:
-      - ckpool_data:/data
+      - ${APP_DATA_DIR}/data/ckpool:/data
+      - ${APP_DATA_DIR}/api:/app
+    working_dir: /app
+    command: >
+      sh -c "pip install flask gunicorn requests --quiet &&
+             gunicorn -w 2 -b 0.0.0.0:3000 app:app"
     environment:
       - BCH_RPC_HOST=bchnd
       - BCH_RPC_PORT=8332
@@ -108,7 +65,3 @@ services:
     depends_on:
       - bchnd
       - ckpool
-
-volumes:
-  bchnd_data:    # BCH blockchain data (~250 GB, grows over time)
-  ckpool_data:   # settings, ckpool config, and log file
