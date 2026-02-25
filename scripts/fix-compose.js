@@ -1,4 +1,4 @@
-const TOKEN = "REPLACE_TOKEN";
+const TOKEN = "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";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
