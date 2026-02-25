@@ -1,7 +1,7 @@
 manifestVersion: 1
 id: projectx-bch-solo
 category: bitcoin
-name: "Project X — BCH Solo"
+name: Project X BCH Solo
 version: "1.0.2"
 tagline: Solo mine Bitcoin Cash from your Umbrel node
 description: >-
@@ -10,20 +10,16 @@ description: >-
   to your own payout address — no pool fees, full custody. The dark premium
   dashboard shows live worker stats, node sync progress, share rates, and
   supports webhook notifications when a block is found.
-releaseNotes: >-
-  Initial release. Self-contained stack with BCHN v28.0.1, ckpool-solo, and
-  a dark premium dashboard with hashrate charts, network difficulty tracking,
-  node pruning support, and webhook notifications.
 developer: MikeyRock
 website: https://github.com/MikeyRock/projectx-bch-solo
 dependencies: []
 repo: https://github.com/MikeyRock/projectx-bch-solo
 support: https://github.com/MikeyRock/projectx-bch-solo/issues
 port: 80
+gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
-deterministicPassword: false
 torOnly: false
 submitter: MikeyRock
 submission: https://github.com/MikeyRock/projectx-bch-solo
