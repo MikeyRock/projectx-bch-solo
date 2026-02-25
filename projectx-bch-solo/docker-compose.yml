@@ -11,11 +11,28 @@ services:
   web:
     image: nginx:1.27-alpine
     restart: on-failure
+    volumes:
+      - ${APP_DATA_DIR}/exports/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${APP_DATA_DIR}/exports/app:/usr/share/nginx/html:ro
+    depends_on:
+      - api
 
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
     restart: on-failure
-    command: bitcoind -datadir=/data -rpcuser=bchrpc -rpcpassword=changeme -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpcport=8332 -server=1 -txindex=1
+    stop_grace_period: 10m
+    command: >
+      bitcoind
+      -datadir=/data
+      -rpcuser=bchrpc
+      -rpcpassword=changeme
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcport=8332
+      -server=1
+      -txindex=1
+      -addnode=seed.flowee.cash
+      -addnode=seeder.criptolayer.net
     volumes:
       - ${APP_DATA_DIR}/data/bchnd:/data
 
@@ -24,5 +41,28 @@ services:
     restart: on-failure
     ports:
       - "3333:3333"
+    volumes:
+      - ${APP_DATA_DIR}/data/ckpool:/data
+      - ${APP_DATA_DIR}/scripts/init.sh:/scripts/init.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/init.sh"]
     depends_on:
       - bchnd
+
+  api:
+    image: python:3.12-slim
+    restart: on-failure
+    working_dir: /app
+    command: >
+      sh -c "pip install --no-cache-dir flask gunicorn requests flask-cors --quiet &&
+             exec gunicorn -w 2 -b 0.0.0.0:3000 app:app"
+    volumes:
+      - ${APP_DATA_DIR}/data/ckpool:/data
+      - ${APP_DATA_DIR}/api:/app:ro
+    environment:
+      - BCH_RPC_HOST=bchnd
+      - BCH_RPC_PORT=8332
+      - SETTINGS_FILE=/data/projectx-settings.json
+      - LOG_FILE=/data/ckpool.log
+    depends_on:
+      - bchnd
+      - ckpool
