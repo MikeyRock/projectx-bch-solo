@@ -1,14 +1,13 @@
 version: "3.8"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Project X connects to the Bitcoin Cash Node app already running on Umbrel.
-# Umbrel's BCH node container is reachable at hostname:
-#   bitcoin-cash-node_node_1   (port 8332)
-# on the external Docker network: bitcoin-cash-node_default
+# Project X — BCH Solo  |  Self-contained stack
+# Starts its own Bitcoin Cash Node (BCHN v28.0.1) alongside ckpool and the
+# dashboard API. No external Umbrel BCH node is required.
 #
-# RPC credentials must match what is set in the BCH Node app on Umbrel.
-# By default Umbrel uses: user=umbrel  pass=moneyprintergobrrr
-# You can confirm them in: ~/umbrel/app-data/bitcoin-cash-node/data/bitcoin.conf
+# Before first run, open the dashboard Settings and set:
+#   1. Your BCH payout address  (bitcoincash:q…)
+#   2. A strong RPC password    (used internally between bchnd and ckpool)
 # ──────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -24,15 +23,42 @@ services:
     volumes:
       - ./exports/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./exports/app:/usr/share/nginx/html:ro
-    networks:
-      - default
     depends_on:
       - api
 
   # ──────────────────────────────────────────────
-  # ckpool solo stratum server
-  # Points at the existing Umbrel BCH node — no
-  # second node is started.
+  # Bitcoin Cash Node  v28.0.1  (EB32.0)
+  # mainnet — full node, txindex enabled
+  # RPC bound to all interfaces so ckpool and the
+  # API container can reach it by hostname "bchnd"
+  # ──────────────────────────────────────────────
+  bchnd:
+    image: zquestz/bitcoin-cash-node:28.0.1
+    restart: unless-stopped
+    command: >
+      sh -c "
+        SETTINGS=/data/projectx-settings.json
+        RPC_USER=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['user'])\" 2>/dev/null || echo bchrpc)
+        RPC_PASS=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['pass'])\" 2>/dev/null || echo changeme)
+        exec bitcoind \
+          -datadir=/bchnd_data \
+          -rpcuser=$$RPC_USER \
+          -rpcpassword=$$RPC_PASS \
+          -rpcallowip=0.0.0.0/0 \
+          -rpcbind=0.0.0.0 \
+          -rpcport=8332 \
+          -server=1 \
+          -txindex=1 \
+          -addnode=seed.flowee.cash \
+          -addnode=seeder.criptolayer.net
+      "
+    volumes:
+      - bchnd_data:/bchnd_data
+      - ckpool_data:/data:ro   # read settings to get RPC creds
+
+  # ──────────────────────────────────────────────
+  # ckpool-solo  (Stratum v1)
+  # pinned to stable build: 590fb2a
   # ──────────────────────────────────────────────
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a
@@ -43,13 +69,12 @@ services:
       - ckpool_data:/data
       - ./scripts/init.sh:/scripts/init.sh:ro
     entrypoint: ["/bin/sh", "/scripts/init.sh"]
-    networks:
-      - default
-      - bchn_network   # reach the existing Umbrel BCH node
+    depends_on:
+      - bchnd
 
   # ──────────────────────────────────────────────
-  # Python Flask API — reads ckpool log + proxies
-  # BCH node RPC for dashboard status data.
+  # Python Flask API
+  # reads ckpool log + proxies BCH node RPC
   # ──────────────────────────────────────────────
   api:
     build:
@@ -59,27 +84,14 @@ services:
     volumes:
       - ckpool_data:/data
     environment:
-      # Umbrel BCH Node hostname on its internal Docker network
-      - BCH_RPC_HOST=bitcoin-cash-node_node_1
+      - BCH_RPC_HOST=bchnd
       - BCH_RPC_PORT=8332
-      # Default Umbrel BCH node RPC credentials — change if yours differ
-      - BCH_RPC_USER=umbrel
-      - BCH_RPC_PASS=moneyprintergobrrr
       - SETTINGS_FILE=/data/projectx-settings.json
       - LOG_FILE=/data/ckpool.log
-    networks:
-      - default
-      - bchn_network   # reach the existing Umbrel BCH node
     depends_on:
+      - bchnd
       - ckpool
 
 volumes:
-  ckpool_data:
-
-networks:
-  default:
-  # The external network created by the Umbrel Bitcoin Cash Node app.
-  # Name format: <app-id>_default  →  bitcoin-cash-node_default
-  bchn_network:
-    external: true
-    name: bitcoin-cash-node_default
+  bchnd_data:    # BCH blockchain data (~250 GB, grows over time)
+  ckpool_data:   # settings, ckpool config, and log file
