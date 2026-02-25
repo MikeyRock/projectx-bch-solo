@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
 
-const TOKEN = "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";
+const TOKEN = "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";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
