@@ -1,0 +1,19 @@
+manifestVersion: 1
+id: projectx-bch-solo
+category: bitcoin
+name: Project X BCH Solo
+version: "1.0.0"
+tagline: BCH node + solo pool
+icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.png
+description: BCH node + ckpool-solo stratum server. Solo mine Bitcoin Cash to your own address. No pool fees, full custody.
+developer: MikeyRock
+website: https://github.com/MikeyRock/projectx-bch-solo
+dependencies: []
+repo: https://github.com/MikeyRock/projectx-bch-solo
+support: https://github.com/MikeyRock/projectx-bch-solo/issues
+port: 80
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+torOnly: false
