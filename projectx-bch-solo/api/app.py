@@ -153,6 +153,7 @@ def get_node_info() -> dict:
                 info.get("verificationprogress", 0) * 100, 4
             ),
             "initial_block_download": info.get("initialblockdownload", False),
+            "difficulty": info.get("difficulty", 0),
             "subversion": net_info.get("subversion", ""),
             "version": net_info.get("version", 0),
         }
