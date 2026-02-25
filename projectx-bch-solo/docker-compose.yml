@@ -30,6 +30,8 @@ services:
       -addnode=seed.flowee.cash
     volumes:
       - ${APP_DATA_DIR}/data/bchnd:/data
+    networks:
+      - umbrel_main_network
 
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a

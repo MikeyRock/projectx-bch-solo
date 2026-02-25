@@ -15,9 +15,7 @@ dependencies: []
 repo: https://github.com/MikeyRock/projectx-bch-solo
 support: https://github.com/MikeyRock/projectx-bch-solo/issues
 port: 80
-gallery:
-  - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/1.png
-  - https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/screenshots/2.png
+gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
