@@ -2,7 +2,7 @@ manifestVersion: 1
 id: projectx-bch-solo
 category: bitcoin
 name: "Project X — BCH Solo"
-version: "1.0.0"
+version: "1.0.1"
 tagline: Solo mine Bitcoin Cash from your Umbrel node
 description: >-
   Project X runs a full Bitcoin Cash node alongside a ckpool solo stratum
