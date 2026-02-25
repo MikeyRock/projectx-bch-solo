@@ -49,6 +49,9 @@ DEFAULT_SETTINGS = {
         "stratum_port": 3333,
     },
     "rpc": {"user": "bchrpc", "pass": "CHANGE_ME_RPC_PASSWORD"},
+    # node.prune: 0 = full archival, 550+ = MiB target for pruned mode
+    # Mirrors bitcoind -prune=<MiB> flag. txindex is auto-disabled when pruning.
+    "node": {"prune": 0},
     "notifications": {
         "enabled": False,
         "secret": "CHANGE_ME_LONG_RANDOM_SECRET",
@@ -62,6 +65,7 @@ RESTART_REQUIRED_KEYS = {
     ("mining", "stratum_port"),
     ("rpc", "user"),
     ("rpc", "pass"),
+    ("node", "prune"),
 }
 
 # ──────────────────────────────────────────────────────────────────────────────

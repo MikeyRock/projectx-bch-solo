@@ -719,6 +719,31 @@
           <input class="form-input" id="s-rpc-pass" type="password" placeholder="••••••••" />
           <span class="form-hint">Leave as &#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022; to keep existing. Requires restart.</span>
         </div>
+
+        <!-- Pruning divider -->
+        <div style="border-top:1px solid var(--border);margin:8px 0 12px;"></div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Network &amp; Pruning</div>
+
+        <div class="form-row">
+          <label class="form-label" for="s-prune">Prune Target <span style="color:var(--text-muted);font-weight:400;">(MiB)</span></label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <input class="form-input" id="s-prune" type="number" min="0" step="50" placeholder="0" style="width:110px;" />
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="setPrune(0)" title="Full archival — keep all history">Archival</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="setPrune(550)" title="550 MiB minimum pruned">550 MiB</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="setPrune(2048)" title="2 GB pruned">2 GB</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="setPrune(10240)" title="10 GB pruned">10 GB</button>
+            </div>
+          </div>
+          <span class="form-hint">
+            <strong style="color:var(--text);">0</strong> = full archival node (keeps all blockchain history, ~250 GB+).<br>
+            <strong style="color:var(--text);">550+</strong> MiB = pruned mode — only keeps the most recent blocks, dramatically reduces disk usage.<br>
+            <span style="color:var(--amber);">Note: pruned nodes cannot be used for transaction indexing (txindex is disabled automatically). Requires restart.</span>
+          </span>
+        </div>
+
+        <!-- Pruned storage estimate -->
+        <div id="prune-estimate" style="display:none;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text-dim);line-height:1.7;"></div>
       </div>
 
       <!-- Notifications group -->
@@ -967,7 +992,7 @@
     return d.toFixed(0);
   }
 
-  // ── Estimated hashrate from ckpool stats ─────────────────────────────────
+  // ── Estimated hashrate from ckpool stats ─────────────────────���───────────
   // hps = best_share_diff * 2^32 / window_seconds  (rough estimate)
   function estimateHashrate(data) {
     const bestDiff = data.ckpool?.best_share_diff ?? 0;
@@ -976,7 +1001,7 @@
     return (bestDiff * Math.pow(2, 32)) / (winMin * 60);
   }
 
-  // ── Difficulty epoch bars ────────────────────────────────────────────────
+  // ── Difficulty epoch bars ──────���─────────────────────────────────────────
   function renderDiffEpochBars(currentDiff, historyRef) {
     const container = document.getElementById('diff-epoch-rows');
     if (!container) return;
@@ -1256,6 +1281,7 @@
       ui: { pool_name: 'Project X', worker_hint: 'user.worker' },
       mining: { payout_address: '', stratum_port: 3333 },
       rpc: { user: 'bchrpc', pass: '' },
+      node: { prune: 0 },
       notifications: { enabled: false, secret: '', targets: [] },
     };
   }
@@ -1288,6 +1314,9 @@
     document.getElementById('s-stratum-port').value = s.mining?.stratum_port || 3333;
     document.getElementById('s-rpc-user').value = s.rpc?.user || '';
     document.getElementById('s-rpc-pass').value = s.rpc?.pass || '';
+    const pruneVal = s.node?.prune ?? 0;
+    document.getElementById('s-prune').value = pruneVal;
+    updatePruneEstimate(pruneVal);
     notifEnabled = s.notifications?.enabled || false;
     const track = document.getElementById('toggle-track-notif');
     track.className = 'toggle-track' + (notifEnabled ? ' on' : '');
@@ -1340,6 +1369,28 @@
     return targets;
   }
 
+  function setPrune(val) {
+    document.getElementById('s-prune').value = val;
+    document.getElementById('s-prune').dispatchEvent(new Event('input'));
+    updatePruneEstimate(val);
+  }
+
+  function updatePruneEstimate(val) {
+    const el = document.getElementById('prune-estimate');
+    const v = parseInt(val, 10);
+    if (isNaN(v) || v === 0) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    const gb = (v / 1024).toFixed(2);
+    const savingsGb = Math.max(0, 250 - parseFloat(gb)).toFixed(0);
+    el.innerHTML =
+      `Storage target: <strong style="color:var(--bch);">${gb} GB</strong> &nbsp;|&nbsp; ` +
+      `Estimated savings vs archival: <strong style="color:var(--bch);">~${savingsGb} GB</strong><br>` +
+      `<span style="color:var(--text-muted);">txindex is automatically disabled in pruned mode. ckpool-solo does not require txindex.</span>`;
+  }
+
   function toggleNotif() {
     notifEnabled = !notifEnabled;
     const track = document.getElementById('toggle-track-notif');
@@ -1347,12 +1398,13 @@
   }
 
   function setupRestartDetection() {
-    const RESTART_FIELDS = ['s-payout', 's-stratum-port', 's-rpc-user', 's-rpc-pass'];
+    const RESTART_FIELDS = ['s-payout', 's-stratum-port', 's-rpc-user', 's-rpc-pass', 's-prune'];
     const orig = {
       payout: document.getElementById('s-payout').value,
       port:   document.getElementById('s-stratum-port').value,
       user:   document.getElementById('s-rpc-user').value,
       pass:   document.getElementById('s-rpc-pass').value,
+      prune:  document.getElementById('s-prune').value,
     };
     const notice = document.getElementById('restart-notice');
     RESTART_FIELDS.forEach(id => {
@@ -1361,9 +1413,14 @@
           document.getElementById('s-payout').value !== orig.payout ||
           document.getElementById('s-stratum-port').value !== orig.port ||
           document.getElementById('s-rpc-user').value !== orig.user ||
-          (document.getElementById('s-rpc-pass').value !== orig.pass && document.getElementById('s-rpc-pass').value !== '••••••••');
+          (document.getElementById('s-rpc-pass').value !== orig.pass && document.getElementById('s-rpc-pass').value !== '••••••••') ||
+          document.getElementById('s-prune').value !== orig.prune;
         notice.className = 'restart-notice' + (changed ? ' visible' : '');
       });
+    });
+    // Live storage estimate on prune input
+    document.getElementById('s-prune').addEventListener('input', (e) => {
+      updatePruneEstimate(parseInt(e.target.value, 10) || 0);
     });
   }
 
@@ -1380,6 +1437,9 @@
       rpc: {
         user: document.getElementById('s-rpc-user').value.trim(),
         pass: document.getElementById('s-rpc-pass').value,
+      },
+      node: {
+        prune: parseInt(document.getElementById('s-prune').value, 10) || 0,
       },
       notifications: {
         enabled: notifEnabled,

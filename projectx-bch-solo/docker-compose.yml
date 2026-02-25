@@ -40,6 +40,14 @@ services:
         SETTINGS=/data/projectx-settings.json
         RPC_USER=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['user'])\" 2>/dev/null || echo bchrpc)
         RPC_PASS=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d['rpc']['pass'])\" 2>/dev/null || echo changeme)
+        PRUNE=$$(python3 -c \"import json; d=json.load(open('$$SETTINGS')); print(d.get('node',{}).get('prune',0))\" 2>/dev/null || echo 0)
+        if [ \"$$PRUNE\" -gt 0 ]; then
+          PRUNE_FLAG=\"-prune=$$PRUNE\"
+          TXINDEX_FLAG=\"-txindex=0\"
+        else
+          PRUNE_FLAG=\"\"
+          TXINDEX_FLAG=\"-txindex=1\"
+        fi
         exec bitcoind \
           -datadir=/bchnd_data \
           -rpcuser=$$RPC_USER \
@@ -48,7 +56,8 @@ services:
           -rpcbind=0.0.0.0 \
           -rpcport=8332 \
           -server=1 \
-          -txindex=1 \
+          $$TXINDEX_FLAG \
+          $$PRUNE_FLAG \
           -addnode=seed.flowee.cash \
           -addnode=seeder.criptolayer.net
       "
