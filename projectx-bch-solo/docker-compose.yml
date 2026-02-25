@@ -1,4 +1,4 @@
-version: "3.9"
+version: "3.7"
 
 services:
 
@@ -7,6 +7,7 @@ services:
       APP_HOST: bchnd
       APP_PORT: 8332
       PROXY_AUTH_ADD: "false"
+      JWT_SECRET: "${JWT_SECRET}"
     networks:
       - umbrel_main_network
 
