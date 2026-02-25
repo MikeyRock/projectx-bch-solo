@@ -1,4 +1,4 @@
-const TOKEN = "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";
+const TOKEN = "REPLACE_TOKEN";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
@@ -11,18 +11,9 @@ services:
 
   app_proxy:
     environment:
-      APP_HOST: web
-      APP_PORT: 80
+      APP_HOST: bchnd
+      APP_PORT: 8332
       PROXY_AUTH_ADD: "false"
-
-  web:
-    image: nginx:1.27-alpine
-    restart: on-failure
-    volumes:
-      - \${APP_DATA_DIR}/exports/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - \${APP_DATA_DIR}/exports/app:/usr/share/nginx/html:ro
-    depends_on:
-      - api
 
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
@@ -39,6 +30,7 @@ services:
       -server=1
       -txindex=1
       -addnode=seed.flowee.cash
+      -addnode=seeder.criptolayer.net
     volumes:
       - \${APP_DATA_DIR}/data/bchnd:/data
 
@@ -47,31 +39,13 @@ services:
     restart: on-failure
     ports:
       - "3333:3333"
-    volumes:
-      - \${APP_DATA_DIR}/data/ckpool:/data
-      - \${APP_DATA_DIR}/scripts/init.sh:/scripts/init.sh:ro
-    entrypoint: ["/bin/sh", "/scripts/init.sh"]
-    depends_on:
-      - bchnd
-
-  api:
-    image: python:3.12-slim
-    restart: on-failure
-    working_dir: /app
-    command: >
-      sh -c "pip install --no-cache-dir flask gunicorn requests flask-cors --quiet &&
-             exec gunicorn -w 2 -b 0.0.0.0:3000 app:app"
-    volumes:
-      - \${APP_DATA_DIR}/data/ckpool:/data
-      - \${APP_DATA_DIR}/api:/app:ro
     environment:
-      - BCH_RPC_HOST=bchnd
-      - BCH_RPC_PORT=8332
-      - SETTINGS_FILE=/data/projectx-settings.json
-      - LOG_FILE=/data/ckpool.log
+      - BTCHOST=bchnd
+      - BTCPORT=8332
+      - BTCUSER=bchrpc
+      - BTCPASS=changeme
     depends_on:
       - bchnd
-      - ckpool
 `;
 
 async function main() {
