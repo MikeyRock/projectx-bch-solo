@@ -1,6 +1,7 @@
 // This script uses the GitHub API to directly update files on the main branch.
 // It requires a GITHUB_TOKEN environment variable with repo write access.
 
+const TOKEN = process.env.GITHUB_TOKEN || "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";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
@@ -104,7 +105,7 @@ async function getFileSha(path) {
   const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}?ref=${BRANCH}`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `token ${process.env.GITHUB_TOKEN}`,
+      Authorization: `token ${TOKEN}`,
       Accept: "application/vnd.github.v3+json",
     },
   });
@@ -128,7 +129,7 @@ async function updateFile(path, content) {
   const res = await fetch(url, {
     method: "PUT",
     headers: {
-      Authorization: `token ${process.env.GITHUB_TOKEN}`,
+      Authorization: `token ${TOKEN}`,
       Accept: "application/vnd.github.v3+json",
       "Content-Type": "application/json",
     },
@@ -144,12 +145,7 @@ async function updateFile(path, content) {
 }
 
 async function main() {
-  if (!process.env.GITHUB_TOKEN) {
-    console.error("[v0] GITHUB_TOKEN env var is required. Generate a personal access token at:");
-    console.error("[v0] https://github.com/settings/tokens/new?scopes=repo");
-    console.error("[v0] Then set it: export GITHUB_TOKEN=ghp_...");
-    process.exit(1);
-  }
+  console.log("[v0] Starting GitHub API file updates on main branch...");
 
   for (const file of files) {
     await updateFile(file.path, file.content);
