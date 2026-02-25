@@ -20,19 +20,20 @@ services:
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
     restart: on-failure
-    volumes:
-      - ${APP_DATA_DIR}/data/bchnd:/data
     command: >
       bitcoind
       -datadir=/data
       -rpcuser=bchrpc
-      -rpcpassword=changeme
+      -rpcpassword=changeme_rpc
       -rpcallowip=0.0.0.0/0
       -rpcbind=0.0.0.0
       -rpcport=8332
       -server=1
       -txindex=1
       -addnode=seed.flowee.cash
+      -addnode=seeder.criptolayer.net
+    volumes:
+      - ${APP_DATA_DIR}/data/bchnd:/data
 
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a
