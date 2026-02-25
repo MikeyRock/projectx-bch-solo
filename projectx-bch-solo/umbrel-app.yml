@@ -6,10 +6,10 @@ version: "1.0.0"
 tagline: BCH node + solo pool
 icon: https://raw.githubusercontent.com/MikeyRock/projectx-bch-solo/main/projectx-bch-solo/icon.png
 description: >-
-  Project X runs a full Bitcoin Cash node alongside a ckpool solo stratum
+  Project X runs a full Bitcoin Cash node alongside a ckpool-solo stratum
   server. Point your ASIC miners at the stratum URL and solo mine BCH directly
   to your own payout address. No pool fees, full custody. Dashboard shows live
-  hashrate charts, node sync, network difficulty, and block notifications.
+  hashrate, node sync, network difficulty, and block notifications.
 developer: MikeyRock
 website: https://github.com/MikeyRock/projectx-bch-solo
 dependencies: []
