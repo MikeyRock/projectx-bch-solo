@@ -1,10 +1,9 @@
-import { Buffer } from "buffer";
-
 const TOKEN = "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";
 const OWNER = "MikeyRock";
 const REPO = "projectx-bch-solo";
 const BRANCH = "main";
 const FILE_PATH = "projectx-bch-solo/docker-compose.yml";
+const KNOWN_SHA = "373b127badd254ee85c35741247ffff14adaf4a6";
 
 const NEW_CONTENT = `version: "3.7"
 
@@ -75,58 +74,56 @@ services:
       - ckpool
 `;
 
-async function getCurrentSha() {
-  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?ref=${BRANCH}`;
-  console.log("[v0] Fetching current file SHA from:", url);
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-  const data = await res.json();
-  console.log("[v0] Response status:", res.status);
-  if (!res.ok) {
-    console.error("[v0] Error fetching SHA:", JSON.stringify(data));
+async function main() {
+  // Step 1: get current SHA fresh from API
+  console.log("[v0] Fetching current SHA...");
+  const getRes = await fetch(
+    `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}?ref=${BRANCH}`,
+    {
+      headers: {
+        Authorization: `token ${TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+  const fileData = await getRes.json();
+  if (!getRes.ok) {
+    console.error("[v0] Failed to get SHA:", fileData.message);
     process.exit(1);
   }
-  console.log("[v0] Current SHA:", data.sha);
-  console.log("[v0] Current size:", data.size, "bytes");
-  return data.sha;
-}
+  const sha = fileData.sha;
+  console.log("[v0] Got SHA:", sha);
+  console.log("[v0] File size:", fileData.size, "bytes");
 
-async function updateFile(sha) {
-  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
-  const body = {
-    message: "fix: correct docker-compose.yml for Umbrel compatibility",
-    content: Buffer.from(NEW_CONTENT).toString("base64"),
-    sha: sha,
-    branch: BRANCH,
-  };
-
-  console.log("[v0] Updating file via GitHub API...");
-  const res = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  console.log("[v0] Update response status:", res.status);
-  if (res.ok) {
-    console.log("[v0] SUCCESS! File updated.");
-    console.log("[v0] New SHA:", data.content?.sha);
-    console.log("[v0] Commit:", data.commit?.html_url);
+  // Step 2: update the file
+  console.log("[v0] Pushing new content...");
+  const encoded = Buffer.from(NEW_CONTENT, "utf8").toString("base64");
+  const putRes = await fetch(
+    `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "fix: full docker-compose rewrite for Umbrel",
+        content: encoded,
+        sha: sha,
+        branch: BRANCH,
+      }),
+    }
+  );
+  const putData = await putRes.json();
+  if (putRes.ok) {
+    console.log("[v0] SUCCESS status:", putRes.status);
+    console.log("[v0] New file SHA:", putData.content.sha);
+    console.log("[v0] Commit URL:", putData.commit.html_url);
   } else {
-    console.error("[v0] FAILED:", JSON.stringify(data));
+    console.error("[v0] FAILED status:", putRes.status);
+    console.error("[v0] Error:", putData.message);
   }
 }
 
-const sha = await getCurrentSha();
-await updateFile(sha);
+main().catch(console.error);
