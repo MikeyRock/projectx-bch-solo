@@ -4,22 +4,30 @@ services:
 
   app_proxy:
     environment:
-      APP_HOST: web
+      APP_HOST: projectx-bch-solo_web_1
       APP_PORT: 80
       PROXY_AUTH_ADD: "false"
-    networks:
-      - umbrel_main_network
 
   web:
     image: nginx:1.27-alpine
     restart: on-failure
-    networks:
-      - umbrel_main_network
+    stop_grace_period: 1m
 
   bchnd:
     image: zquestz/bitcoin-cash-node:28.0.1
     restart: on-failure
-    command: bitcoind -datadir=/data -rpcuser=bchrpc -rpcpassword=changeme -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpcport=8332 -server=1 -txindex=1
+    stop_grace_period: 15m
+    command: >
+      bitcoind
+      -datadir=/data
+      -rpcuser=bchrpc
+      -rpcpassword=changeme_rpc
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcport=8332
+      -server=1
+      -txindex=1
+      -addnode=seed.flowee.cash
     volumes:
       - ${APP_DATA_DIR}/data/bchnd:/data
     networks:
@@ -28,13 +36,8 @@ services:
   ckpool:
     image: ghcr.io/getumbrel/docker-ckpool-solo:590fb2a
     restart: on-failure
+    stop_grace_period: 1m
     ports:
-      - "3333:3333"
-    networks:
-      - umbrel_main_network
+      - "3333:3333/tcp"
     depends_on:
       - bchnd
-
-networks:
-  umbrel_main_network:
-    external: true
