@@ -31,6 +31,7 @@ services:
       -rpcport=8332
       -server=1
       -txindex=1
+      -addnode=seed.flowee.cash
     volumes:
       - ${APP_DATA_DIR}/data/bchnd:/data
 
