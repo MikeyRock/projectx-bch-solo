@@ -10,12 +10,11 @@ description: >-
   to your own payout address — no pool fees, full custody. The dark premium
   dashboard shows live worker stats, node sync progress, share rates, and
   supports webhook notifications when a block is found.
-developer: Project X Community
-website: https://github.com/projectx-bch-solo
-dependencies:
-  - bitcoin-cash-node
-repo: https://github.com/projectx-bch-solo/umbrel-app
-support: https://github.com/projectx-bch-solo/umbrel-app/issues
+developer: MikeyRock
+website: https://github.com/MikeyRock/projectx-bch-solo
+dependencies: []
+repo: https://github.com/MikeyRock/projectx-bch-solo
+support: https://github.com/MikeyRock/projectx-bch-solo/issues
 port: 8080
 gallery:
   - "1.jpg"
